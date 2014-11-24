@@ -1,0 +1,19 @@
+{
+	"FileVersion": 3,
+	"FriendlyName": "CityGen",
+	"Version": 1,
+	"VersionName": "0.1",
+	"EngineVersion": 1579795,
+	"Description": "To create cities using the voronoi algorithm",
+	"Category": "CityGen.Plugin",
+	"CreatedBy": "Roel Schoonenberg & Yannick Lange",
+	"CreatedByUrl": "",
+	
+	"Modules":
+	[
+		{ 
+			"Name": "CityGen", 
+			"Type": "Editor"
+		}
+	]
+}
