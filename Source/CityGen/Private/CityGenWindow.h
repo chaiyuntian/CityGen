@@ -76,4 +76,11 @@ private:
 	//Creating
 	void CreateBrush(FVector Position, FVector Size, UWorld* World);
 	FReply GenerateCity();
+	
+	//The New stuff
+	void NumberPointsChanged(const uint16 Value);
+	TOptional<uint16> GetNumberPoints() const;
+	uint16 NumberPoints;
+
+	TArray<FVector> ReferencesPoints;
 };

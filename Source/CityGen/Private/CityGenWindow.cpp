@@ -1,6 +1,8 @@
 #include "CityGenPch.h"
 #include "CityGenWindow.h"
 #include "CityGenerator.h"
+#include "DrawDebugHelpers.h"
+#include "CityGenerator.h"
 
 #include "Engine/TriggerBox.h"
 
@@ -16,7 +18,25 @@ CityGenWindow::CityGenWindow() :
 	BoundsActor(nullptr),
 	AlleySpace(SAlleySpace::NO_ALLEY)
 {
+	float X = 0;
+	float Y = 0;
+	int32 j = 0;
+	ReferencesPoints.Init(100);
+	for (int32 i = 0; i < ReferencesPoints.Num(); i++)
+	{
+		ReferencesPoints[i].X = X;
+		ReferencesPoints[i].Y = Y;
+		X += 100;
 
+		if (j == 10)
+		{
+			j = 0;
+			Y += 100;
+			X = 0;
+		}
+		j++;
+		
+	}
 }
 
 void CityGenWindow::Construct(const FArguments& Args)
@@ -35,207 +55,18 @@ void CityGenWindow::Construct(const FArguments& Args)
 			+ SHorizontalBox::Slot()
 			.VAlign(VAlign_Center)
 			[
-				SNew(STextBlock)
-				.Text(this, &CityGenWindow::GetBoundsActorName)
-				.ColorAndOpacity(this, &CityGenWindow::GetBoundsActorColorAndOpacity)
-			]
-
-			+ SHorizontalBox::Slot()
-			.VAlign(VAlign_Center)
-			[
-				SAssignNew(BoundsActorDropdown, SComboButton)
-					.ContentPadding(0)
-					.ForegroundColor(this, &CityGenWindow::GetBoundsActorForeground)
-					.OnGetMenuContent(this, &CityGenWindow::GetBoundsActorContent)
-					.ButtonStyle(FEditorStyle::Get(), "ToggleButton")
-					.ButtonContent()
-					[
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.VAlign(VAlign_Center)
-						[
-							SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
-						]
-
-						+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.VAlign(VAlign_Center)
-							.Padding(2, 0, 0, 0)
-							[
-								SNew(STextBlock).Text(LOCTEXT("SelectedActorName", "SelectedActor"))
-							]
-					]
-			]
-		];
-
-	VertBox->AddSlot()
-		.AutoHeight()
-		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-			.VAlign(VAlign_Center)
-			[
-				SNew(STextBlock).Text(LOCTEXT("AlleySpaceName", "Alley Space"))
+				SNew(STextBlock).Text(LOCTEXT("Radius", "Radius"))
 			]
 
 			+ SHorizontalBox::Slot()
 				.VAlign(VAlign_Center)
 				[
-					SNew(SComboButton)
-					.ContentPadding(0)
-					.OnGetMenuContent(this, &CityGenWindow::GetAlleySpaceContent)
-					.ButtonStyle(FEditorStyle::Get(), "ToggleButton")
-					.ButtonContent()
-					[
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot()
-						.AutoWidth()
-						.VAlign(VAlign_Center)
-						[
-							SNew(SImage).Image(FEditorStyle::GetBrush("GenericViewButton"))
-						]
-
-						+ SHorizontalBox::Slot()
-							.AutoWidth()
-							.VAlign(VAlign_Center)
-							.Padding(2, 0, 0, 0)
-							[
-								SNew(STextBlock).Text(this, &CityGenWindow::GetAlleySpaceText)
-							]
-					]
-				]
-		];
-
-	VertBox->AddSlot()
-		.AutoHeight()
-		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-			.VAlign(VAlign_Center)
-			[
-				SNew(STextBlock).Text(LOCTEXT("BuildingsPerXname", "Buildings X"))
-			]
-
-			+ SHorizontalBox::Slot()
-			.VAlign(VAlign_Center)
-			[
-				SNew(SNumericEntryBox<int32>)
-				.AllowSpin(true)
-				.MinValue(1).MaxValue(200)
-				.MinSliderValue(1).MaxSliderValue(200)
-				.Value(this, &CityGenWindow::GetBuildingsPerX)
-				.OnValueChanged(this, &CityGenWindow::BuildingsPerXChanged)
-			]
-		];
-
-	VertBox->AddSlot()
-		.AutoHeight()
-		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-			.VAlign(VAlign_Center)
-			[
-				SNew(STextBlock).Text(LOCTEXT("BuildingsPerYname", "Buildings Y"))
-			]
-
-			+ SHorizontalBox::Slot()
-				.VAlign(VAlign_Center)
-				[
-					SNew(SNumericEntryBox<int32>)
+					SNew(SNumericEntryBox<uint16>)
 					.AllowSpin(true)
 					.MinValue(1).MaxValue(200)
 					.MinSliderValue(1).MaxSliderValue(200)
-					.Value(this, &CityGenWindow::GetBuildingsPerY)
-					.OnValueChanged(this, &CityGenWindow::BuildingsPerYChanged)
-				]
-		];
-
-	VertBox->AddSlot()
-		.AutoHeight()
-		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-			.VAlign(VAlign_Center)
-			[
-				SNew(STextBlock).Text(LOCTEXT("AlleyWidthName", "Alley Width"))
-			]
-
-			+ SHorizontalBox::Slot()
-				.VAlign(VAlign_Center)
-				[
-					SNew(SNumericEntryBox<float>)
-					.AllowSpin(true)
-					.MinValue(1).MaxValue(200)
-					.MinSliderValue(1).MaxSliderValue(200)
-					.Value(this, &CityGenWindow::GetAlleyWidth)
-					.OnValueChanged(this, &CityGenWindow::AlleyWidthChanged)
-				]
-		];
-
-	VertBox->AddSlot()
-		.AutoHeight()
-		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-			.VAlign(VAlign_Center)
-			[
-				SNew(STextBlock).Text(LOCTEXT("HeightPercentName", "Height Percent"))
-			]
-
-			+ SHorizontalBox::Slot()
-				.VAlign(VAlign_Center)
-				[
-					SNew(SNumericEntryBox<float>)
-					.AllowSpin(true)
-					.MinValue(1).MaxValue(100)
-					.MinSliderValue(1).MaxSliderValue(100)
-					.Value(this, &CityGenWindow::GetHeightPercent)
-					.OnValueChanged(this, &CityGenWindow::HeightPercentChanged)
-				]
-		];
-
-	VertBox->AddSlot()
-		.AutoHeight()
-		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-			.VAlign(VAlign_Center)
-			[
-				SNew(STextBlock).Text(LOCTEXT("MinSizePercentName", "MinSize Percent"))
-			]
-
-			+ SHorizontalBox::Slot()
-				.VAlign(VAlign_Center)
-				[
-					SNew(SNumericEntryBox<float>)
-					.AllowSpin(true)
-					.MinValue(1).MaxValue(100)
-					.MinSliderValue(1).MaxSliderValue(100)
-					.Value(this, &CityGenWindow::GetMinSizePercent)
-					.OnValueChanged(this, &CityGenWindow::MinSizePercentChanged)
-				]
-		];
-
-	VertBox->AddSlot()
-		.AutoHeight()
-		[
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-			.VAlign(VAlign_Center)
-			[
-				SNew(STextBlock).Text(LOCTEXT("SpacingPercentName", "Spacing"))
-			]
-
-			+ SHorizontalBox::Slot()
-				.VAlign(VAlign_Center)
-				[
-					SNew(SNumericEntryBox<float>)
-					.AllowSpin(true)
-					.MinValue(1).MaxValue(30)
-					.MinSliderValue(1).MaxSliderValue(30)
-					.Value(this, &CityGenWindow::GetSpacing)
-					.OnValueChanged(this, &CityGenWindow::SpacingChanged)
+					.Value(this, &CityGenWindow::GetNumberPoints)
+					.OnValueChanged(this, &CityGenWindow::NumberPointsChanged)
 				]
 		];
 
@@ -342,6 +173,16 @@ FSlateColor CityGenWindow::GetBoundsActorColorAndOpacity() const
 		return FLinearColor(1, 0, 0);
 	
 	return FLinearColor(1, 1, 1);
+}
+
+void CityGenWindow::NumberPointsChanged(const uint16 Value)
+{
+	NumberPoints = Value;
+}
+
+TOptional<uint16> CityGenWindow::GetNumberPoints() const
+{
+	return NumberPoints;
 }
 
 FSlateColor CityGenWindow::GetBoundsActorForeground() const
@@ -466,53 +307,32 @@ void CityGenWindow::CreateBrush(FVector Position, FVector Size, UWorld* World)
 
 FReply CityGenWindow::GenerateCity()
 {
-	if (!BoundsActor)
-		return FReply::Handled();
-
-	FVector BoundsSize = BoundsActor->GetComponentsBoundingBox().GetExtent();
-	FVector BoundsPosition = BoundsActor->GetActorLocation();
-	FVector BoundsMin = BoundsPosition - BoundsSize;
-	BoundsSize *= 2;	//Full size, not half size
-	
-	float XBuildingsBounds = (BoundsSize.X - (AlleySpace == SAlleySpace::X_ALLEY ? AlleyWidth : 0)) / (float)BuildingsPerX;
-	float YBuildingsBounds = (BoundsSize.Y - (AlleySpace == SAlleySpace::Y_ALLEY ? AlleyWidth : 0)) / (float)BuildingsPerY;
-
-	float AlleyPivot = 0;
-	if (AlleySpace == SAlleySpace::X_ALLEY)
-	{
-		AlleyPivot = BuildingsPerX / 2.0f;
-	}
-	else if (AlleySpace == SAlleySpace::Y_ALLEY)
-	{
-		AlleyPivot = BuildingsPerY / 2.0f;
-	}
-
-	FVector Position, Size;
-	float CalculateMinSizePercent = MinSizePercent / 100.0f;
+	const int32 count = 100;
+	float xValues[count];
+	float yValues[count];
 	UWorld* World = GetWorld();
-	for (int32 X = 0; X < BuildingsPerX; X++)
+
+	for (int32 i = 0; i < count; i++)
 	{
-		for (int32 Y = 0; Y < BuildingsPerY; Y++)
-		{
-			Size.X = FMath::FRandRange(XBuildingsBounds * CalculateMinSizePercent, XBuildingsBounds) - Spacing;
-			Size.Y = FMath::FRandRange(YBuildingsBounds * CalculateMinSizePercent, YBuildingsBounds) - Spacing;
-			Size.Z = FMath::FRandRange(BoundsSize.Z * CalculateMinSizePercent, BoundsSize.Z);
+		float x = ReferencesPoints[i].X + FMath::RandRange(-NumberPoints, NumberPoints);
+		float y = ReferencesPoints[i].Y + FMath::RandRange(-NumberPoints, NumberPoints);
 
-			Position.X = BoundsMin.X + (XBuildingsBounds * X) + Spacing + (Size.X / 2.0f);
-			Position.Y = BoundsMin.Y + (YBuildingsBounds * Y) + Spacing + (Size.Y / 2.0f);
-			Position.Z = BoundsMin.Z + (Size.Z / 2.0f);
+		DrawDebugPoint(World, FVector(ReferencesPoints[i].X, ReferencesPoints[i].Y, 100), 5, FColor(0, 0, 255, 255), false, 10);
+		DrawDebugPoint(World, FVector(x, y, 100), 5, FColor(255, 0, 0, 255), false, 10);
 
-			if (AlleySpace == SAlleySpace::X_ALLEY && X >= AlleyPivot)
-			{
-				Position.X += AlleyWidth;
-			}
-			else if(AlleySpace == SAlleySpace::Y_ALLEY && Y >= AlleyPivot)
-			{
-				Position.Y += AlleyWidth;
-			}
+		xValues[i] = x;
+		yValues[i] = y;
+	}
 
-			CreateBrush(Position, Size, World);
-		}
+	VoronoiDiagramGenerator vdg;
+	vdg.generateVoronoi(xValues, yValues, count, 0, 1000, 0, 1000, 0);
+	vdg.resetIterator();
+	
+	float x1, y1, x2, y2;
+	while (vdg.getNext(x1, y1, x2, y2))
+	{
+		UE_LOG(CityGen, Log, TEXT("GOT Line (%f,%f)->(%f,%f)"), x1, y1, x2, y2);
+		DrawDebugLine(World, FVector(x1, y1, 100), FVector(x2, y2, 100), FColor(255, 0, 0, 255), false, 10);
 	}
 
 	return FReply::Handled();
