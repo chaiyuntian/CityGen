@@ -333,65 +333,113 @@ FReply CityGenWindow::GenerateCity()
 
 	Edges = Voronoi->GetEdges(Vertices, w, w);
 	
-	std::map<FVector2D, std::vector<FVector2D>> Cells;
+	std::map<VPoint*, std::vector<VPoint>> Cells;
 	for (vor::Vertices::iterator i = Vertices->begin(); i != Vertices->end(); ++i)
 	{
-		FVector2D Vert = FVector2D((*i)->x, (*i)->y);
-		DrawDebugPoint(World, FVector(Vert.X, Vert.Y, 200), 10, FColor(255, 0, 0, 255), false, 100);
-		Cells.insert(std::make_pair(Vert, std::vector<FVector2D>()));
+		DrawDebugPoint(World, FVector((*i)->x, (*i)->y, 200), 10, FColor(255, 0, 0, 255), false, 100);
+		Cells.insert(std::make_pair((*i), std::vector<VPoint>()));
 	}
-
-	int32 BottomHeight = 200;
 
 	for (vor::Edges::iterator i = Edges->begin(); i != Edges->end(); ++i)
 	{
-		FVector2D Start = FVector2D((*i)->start->x, (*i)->start->y);
-		FVector2D End = FVector2D((*i)->end->x, (*i)->end->y);
-		FVector2D LeftSite = FVector2D((*i)->left->x, (*i)->left->y);
-		FVector2D RightSite = FVector2D((*i)->right->x, (*i)->right->y);
-		
-		FVector StartPoint = FVector(Start.X, Start.Y, BottomHeight);
-		DrawDebugLine(World, StartPoint, FVector(End.X, End.Y, BottomHeight), FColor(255, 0, 0, 255), false, 100);
-		DrawDebugLine(World, StartPoint, FVector(LeftSite.X, LeftSite.Y, BottomHeight), FColor(0, 255, 0, 255), false, 100);
-		DrawDebugLine(World, StartPoint, FVector(RightSite.X, RightSite.Y, BottomHeight), FColor(0, 0, 255, 255), false, 100);
+		VPoint* start = (*i)->start;
+		VPoint* end = (*i)->end;
+		VPoint* leftsite = (*i)->left;
+		VPoint* rightsite = (*i)->right;
 
-		if (FVector2D::Distance(Start, End) <= 200)
+		DrawDebugLine(World, FVector(start->x, start->y, 200), FVector(end->x, end->y, 200), FColor(255, 0, 0, 255), false, 100);
+		DrawDebugLine(World, FVector(start->x, start->y, 200), FVector(leftsite->x, leftsite->y, 200), FColor(0, 255, 0, 255), false, 100);
+		DrawDebugLine(World, FVector(start->x, start->y, 200), FVector(rightsite->x, rightsite->y, 200), FColor(0, 0, 255, 255), false, 100);
+
+		FVector2D Start = FVector2D(start->x, start->y);
+		FVector2D End = FVector2D(end->x, end->y);
+		FVector2D LeftSite = FVector2D(leftsite->x, leftsite->y);
+		FVector2D RightSite = FVector2D(rightsite->x, rightsite->y);
+
+		if (Cells.count(leftsite))
 		{
-			if (Cells.count(LeftSite) && LeftSite != FVector2D::ZeroVector)
+			if (leftsite->x != 0 && leftsite->y != 0 && FVector2D::Distance(LeftSite, Start) <= 200)
 			{
-				Cells.at(LeftSite).push_back(Start);
-				Cells.at(LeftSite).push_back(End);
-			}
+				bool Result = true;
+				for (VPoint Point : Cells.at(leftsite))
+				{
+					if (Point.x == start->x && Point.y == start->y) Result = false;
+				}
 
-			if (Cells.count(RightSite) && RightSite != FVector2D::ZeroVector)
+				if (Result){ Cells.at(leftsite).push_back(*start); }
+				
+			}
+			if (leftsite->x != 0 && leftsite->y != 0 && FVector2D::Distance(LeftSite, End) <= 200)
 			{
-				Cells.at(RightSite).push_back(Start);
-				Cells.at(RightSite).push_back(End);
+				bool Result = true;
+				for (VPoint Point : Cells.at(leftsite))
+				{
+					if (Point.x == end->x && Point.y == end->y) Result = false;
+				}
+
+				if (Result){ Cells.at(leftsite).push_back(*end); };
+			}
+		}
+		
+		if (Cells.count(rightsite))
+		{
+			if (start->x != 0 && start->y != 0 && FVector2D::Distance(RightSite, Start) <= 200)
+			{
+				bool Result = true;
+				for (VPoint Point : Cells.at(rightsite))
+				{
+					if (Point.x == start->x && Point.y == start->y) Result = false;
+				}
+				
+				if (Result){ Cells.at(rightsite).push_back(*start); };
+			}
+			if (end->x != 0 && end->y != 0 && FVector2D::Distance(RightSite, End) <= 200)
+			{
+				bool Result = true;
+				for (VPoint Point : Cells.at(rightsite))
+				{
+					if (Point.x == end->x && Point.y == end->y) Result = false;
+				}
+
+				if (Result){ Cells.at(rightsite).push_back(*end); };
 			}
 		}
 	}
+
+	struct LocalComparePointClockwise 
+	{
+	public:
+		LocalComparePointClockwise(VPoint paramA) 
+		{
+			x = paramA.x;
+			y = paramA.y;
+		}
+
+		float ClockWiseAngle(VPoint Point2)
+		{ 
+			double angle = std::atan2(y - Point2.y, x - Point2.x);
+			return (angle * 180 / PI);
+		}
+
+		bool operator () (VPoint a, VPoint b) 
+		{
+			return ClockWiseAngle(a) < ClockWiseAngle(b);
+		}
+
+		float x, y;
+	};
 
 	FVector Direction;
 	for (auto MapItr = Cells.begin(); MapItr != Cells.end(); MapItr++)
 	{
-		FVector CoreLocation = FVector(MapItr->first.X, MapItr->first.Y, BottomHeight);
-
-		vector<FVector2D> SortedPoints = MapItr->second;
-		//SortedPoints.erase(unique(SortedPoints.begin(), SortedPoints.end()), SortedPoints.end());
-
-		/*SortedPoints.push_back(MapItr->second[0]);
-		for (auto PointItr = MapItr->second.begin(); PointItr != MapItr->second.end(); PointItr++)
-		{
-			for (auto NextPointItr = MapItr->second.begin(); NextPointItr != MapItr->second.end(); PointItr++)
-			{
-				if ((*NextPointItr))
-			}
-		}
-*/
+		VPoint Core = *(*MapItr).first;
+		FVector CoreLocation = FVector(Core.x , Core.y , 200);
+		vector<VPoint> SortedPoints = MapItr->second;
+		std::sort(SortedPoints.begin(), SortedPoints.end(), LocalComparePointClockwise(Core));
 		TArray<FVector> BottomBuildingPoints;
 		for (auto PointItr = SortedPoints.begin(); PointItr != SortedPoints.end(); PointItr++)
 		{
-			FVector PointLocation = FVector(PointItr->X, PointItr->Y, BottomHeight);
+			FVector PointLocation = FVector((*PointItr).x , (*PointItr).y , 200);
 			Direction = CoreLocation - PointLocation;
 			Direction.Normalize();
 
@@ -427,28 +475,3 @@ FReply CityGenWindow::GenerateCity()
 	AProceduralBuilding* Building = World->SpawnActor<AProceduralBuilding>();
 	Building->Generate(Points, FVector(10, 25, 200), Triangles);
 */
-
-
-//if (Cells.count(leftsite))
-//{
-//	if (leftsite->x != 0 && leftsite->y != 0 && FVector2D::Distance(LeftSite, Start) <= 200)
-//	{
-//		Cells.at(leftsite).push_back(*start);
-//	}
-//	if (leftsite->x != 0 && leftsite->y != 0 && FVector2D::Distance(LeftSite, End) <= 200)
-//	{
-//		Cells.at(leftsite).push_back(*end);
-//	}
-//}
-//
-//if (Cells.count(rightsite))
-//{
-//	if (start->x != 0 && start->y != 0 && FVector2D::Distance(RightSite, Start) <= 200)
-//	{
-//		Cells.at(rightsite).push_back(*start);
-//	}
-//	if (end->x != 0 && end->y != 0 && FVector2D::Distance(RightSite, End) <= 200)
-//	{
-//		Cells.at(rightsite).push_back(*end);
-//	}
-//}

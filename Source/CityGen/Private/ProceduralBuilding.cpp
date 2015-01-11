@@ -65,13 +65,13 @@ void AProceduralBuilding::Generate(TArray<FVector> SortedPoints, FVector RootPoi
 		OutTriangles.Add(t1);
 		OutTriangles.Add(t2);
 
-	/*	v0.Position = TopRight;
+		v0.Position = TopRight;
 		v1.Position = TopLeft;
 		v2.Position = RoofPoint;
 		roof.Vertex0 = v2;
 		roof.Vertex1 = v1;
 		roof.Vertex2 = v0;
-		OutTriangles.Add(roof);*/
+		OutTriangles.Add(roof);
 	}
 
 	Mesh->SetProceduralMeshTriangles(OutTriangles);

@@ -17,6 +17,9 @@ public class CityGen : ModuleRules
                 "EditorStyle",
                 "CoreUObject",
                 "LevelEditor",
+                "RenderCore",
+                "RHI",
+                "ShaderCore"
 			}
 		);
 
