@@ -5,6 +5,13 @@
 #include "CityGenerator.h"
 
 #include "Engine/TriggerBox.h"
+#include "ProceduralBuilding.h"
+
+#include "Voronoi.h"
+#include "VPoint.h"
+#include <map>
+#include <vector.h>
+#include <algorithm>
 
 #define LOCTEXT_NAMESPACE "CityGenWindow"
 
@@ -308,32 +315,140 @@ void CityGenWindow::CreateBrush(FVector Position, FVector Size, UWorld* World)
 FReply CityGenWindow::GenerateCity()
 {
 	const int32 count = 100;
-	float xValues[count];
-	float yValues[count];
 	UWorld* World = GetWorld();
+	
+	double w = 1;
+	int32 MaxPointDist = 1000;
+	vor::Voronoi* Voronoi = new vor::Voronoi();
+	vor::Vertices* Vertices = new vor::Vertices();
+	vor::Edges* Edges = new vor::Edges();
 
 	for (int32 i = 0; i < count; i++)
 	{
 		float x = ReferencesPoints[i].X + FMath::RandRange(-NumberPoints, NumberPoints);
 		float y = ReferencesPoints[i].Y + FMath::RandRange(-NumberPoints, NumberPoints);
-
-		DrawDebugPoint(World, FVector(ReferencesPoints[i].X, ReferencesPoints[i].Y, 100), 5, FColor(0, 0, 255, 255), false, 10);
-		DrawDebugPoint(World, FVector(x, y, 100), 5, FColor(255, 0, 0, 255), false, 10);
-
-		xValues[i] = x;
-		yValues[i] = y;
+		
+		Vertices->push_back(new VPoint(x, y));
 	}
 
-	VoronoiDiagramGenerator vdg;
-	vdg.generateVoronoi(xValues, yValues, count, 0, 1000, 0, 1000, 0);
-	vdg.resetIterator();
+	Edges = Voronoi->GetEdges(Vertices, w, w);
 	
-	float x1, y1, x2, y2;
-	while (vdg.getNext(x1, y1, x2, y2))
+	std::map<FVector2D, std::vector<FVector2D>> Cells;
+	for (vor::Vertices::iterator i = Vertices->begin(); i != Vertices->end(); ++i)
 	{
-		UE_LOG(CityGen, Log, TEXT("GOT Line (%f,%f)->(%f,%f)"), x1, y1, x2, y2);
-		DrawDebugLine(World, FVector(x1, y1, 100), FVector(x2, y2, 100), FColor(255, 0, 0, 255), false, 10);
+		FVector2D Vert = FVector2D((*i)->x, (*i)->y);
+		DrawDebugPoint(World, FVector(Vert.X, Vert.Y, 200), 10, FColor(255, 0, 0, 255), false, 100);
+		Cells.insert(std::make_pair(Vert, std::vector<FVector2D>()));
+	}
+
+	int32 BottomHeight = 200;
+
+	for (vor::Edges::iterator i = Edges->begin(); i != Edges->end(); ++i)
+	{
+		FVector2D Start = FVector2D((*i)->start->x, (*i)->start->y);
+		FVector2D End = FVector2D((*i)->end->x, (*i)->end->y);
+		FVector2D LeftSite = FVector2D((*i)->left->x, (*i)->left->y);
+		FVector2D RightSite = FVector2D((*i)->right->x, (*i)->right->y);
+		
+		FVector StartPoint = FVector(Start.X, Start.Y, BottomHeight);
+		DrawDebugLine(World, StartPoint, FVector(End.X, End.Y, BottomHeight), FColor(255, 0, 0, 255), false, 100);
+		DrawDebugLine(World, StartPoint, FVector(LeftSite.X, LeftSite.Y, BottomHeight), FColor(0, 255, 0, 255), false, 100);
+		DrawDebugLine(World, StartPoint, FVector(RightSite.X, RightSite.Y, BottomHeight), FColor(0, 0, 255, 255), false, 100);
+
+		if (FVector2D::Distance(Start, End) <= 200)
+		{
+			if (Cells.count(LeftSite) && LeftSite != FVector2D::ZeroVector)
+			{
+				Cells.at(LeftSite).push_back(Start);
+				Cells.at(LeftSite).push_back(End);
+			}
+
+			if (Cells.count(RightSite) && RightSite != FVector2D::ZeroVector)
+			{
+				Cells.at(RightSite).push_back(Start);
+				Cells.at(RightSite).push_back(End);
+			}
+		}
+	}
+
+	FVector Direction;
+	for (auto MapItr = Cells.begin(); MapItr != Cells.end(); MapItr++)
+	{
+		FVector CoreLocation = FVector(MapItr->first.X, MapItr->first.Y, BottomHeight);
+
+		vector<FVector2D> SortedPoints = MapItr->second;
+		//SortedPoints.erase(unique(SortedPoints.begin(), SortedPoints.end()), SortedPoints.end());
+
+		/*SortedPoints.push_back(MapItr->second[0]);
+		for (auto PointItr = MapItr->second.begin(); PointItr != MapItr->second.end(); PointItr++)
+		{
+			for (auto NextPointItr = MapItr->second.begin(); NextPointItr != MapItr->second.end(); PointItr++)
+			{
+				if ((*NextPointItr))
+			}
+		}
+*/
+		TArray<FVector> BottomBuildingPoints;
+		for (auto PointItr = SortedPoints.begin(); PointItr != SortedPoints.end(); PointItr++)
+		{
+			FVector PointLocation = FVector(PointItr->X, PointItr->Y, BottomHeight);
+			Direction = CoreLocation - PointLocation;
+			Direction.Normalize();
+
+			FVector OffsetPosition = PointLocation + (30 * Direction);
+			BottomBuildingPoints.Add(OffsetPosition);
+		}
+
+		AProceduralBuilding* Building = World->SpawnActor<AProceduralBuilding>();
+		
+		TArray<FProceduralMeshTriangle> Triangles;
+		Building->Generate(BottomBuildingPoints, CoreLocation, Triangles);
 	}
 
 	return FReply::Handled();
 }
+
+
+
+
+
+
+
+
+
+	/*TArray<FProceduralMeshTriangle> Triangles;
+	TArray<FVector> Points;
+	Points.Add(FVector(10, 10, 200));
+	Points.Add(FVector(20, 20, 200));
+	Points.Add(FVector(20, 30, 200));
+	Points.Add(FVector(10, 40, 200));
+	Points.Add(FVector(0, 50, 200));
+	Points.Add(FVector(5, 25, 200));
+	AProceduralBuilding* Building = World->SpawnActor<AProceduralBuilding>();
+	Building->Generate(Points, FVector(10, 25, 200), Triangles);
+*/
+
+
+//if (Cells.count(leftsite))
+//{
+//	if (leftsite->x != 0 && leftsite->y != 0 && FVector2D::Distance(LeftSite, Start) <= 200)
+//	{
+//		Cells.at(leftsite).push_back(*start);
+//	}
+//	if (leftsite->x != 0 && leftsite->y != 0 && FVector2D::Distance(LeftSite, End) <= 200)
+//	{
+//		Cells.at(leftsite).push_back(*end);
+//	}
+//}
+//
+//if (Cells.count(rightsite))
+//{
+//	if (start->x != 0 && start->y != 0 && FVector2D::Distance(RightSite, Start) <= 200)
+//	{
+//		Cells.at(rightsite).push_back(*start);
+//	}
+//	if (end->x != 0 && end->y != 0 && FVector2D::Distance(RightSite, End) <= 200)
+//	{
+//		Cells.at(rightsite).push_back(*end);
+//	}
+//}

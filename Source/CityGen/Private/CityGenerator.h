@@ -2,203 +2,97 @@
 
 #include "Core.h"
 
+#include <iostream>
+#include <queue>
+#include <set>
 #include <math.h>
-#include <stdlib.h>
-#include <string.h>
+#include <vector.h>
+#include <map>
 
-#ifndef NULL
-#define NULL 0
-#endif
-#define DELETED -2
+using namespace std;
 
-#define le 0
-#define re 1
+// Notation for working with points
+typedef pair<double, double> point;
+#define x first
+#define y second
 
-struct	Freenode
-{
-	struct	Freenode *nextfree;
+// Arc, event, and segment datatypes
+struct arc;
+struct seg;
+class VoronoiGenerator;
+
+struct event {
+	double x;
+	point p;
+	point Point, PrevPoint;
+	arc *a;
+	bool valid;
+
+	event(double xx, point pp, arc *aa)
+		: x(xx), p(pp), a(aa), valid(true) {}
 };
 
-struct FreeNodeArrayList
-{
-	struct	Freenode* memory;
-	struct	FreeNodeArrayList* next;
+struct arc {
+	point p;
+	arc *prev, *next;
+	event *e;
 
+	seg *s0, *s1;
+
+	arc(point pp, arc *a = 0, arc *b = 0)
+		: p(pp), prev(a), next(b), e(0), s0(0), s1(0) {}
 };
 
-struct	Freelist
-{
-	struct	Freenode	*head;
-	int		nodesize;
-};
-
-struct Point
-{
-	float x, y;
-};
-
-// structure used both for sites and for vertices 
-struct Site
-{
-	struct	Point	coord;
-	int		sitenbr;
-	int		refcnt;
-};
-
-struct Edge
-{
-	float   a, b, c;
-	struct	Site 	*ep[2];
-	struct	Site	*reg[2];
-	int		edgenbr;
-
-};
-
-struct GraphEdge
-{
-	float x1, y1, x2, y2;
-	struct GraphEdge* next;
-};
-
-struct Halfedge
-{
-	struct	Halfedge	*ELleft, *ELright;
-	struct	Edge	*ELedge;
-	int		ELrefcnt;
-	char	ELpm;
-	struct	Site	*vertex;
-	float	ystar;
-	struct	Halfedge *PQnext;
-};
-
-class VoronoiDiagramGenerator
+class VoronoiGenerator
 {
 public:
-	VoronoiDiagramGenerator();
-	~VoronoiDiagramGenerator();
+	VoronoiGenerator();
+	void Generate(const FVector2D MinBoundingBox, const FVector2D MaxBoundingBox);
 
-	bool generateVoronoi(float *xValues, float *yValues, int numPoints, float minX, float maxX, float minY, float maxY, float minDist = 0);
+	// Function declarations
+	void process_point();
+	void process_event();
+	void front_insert(point  p);
 
-	void resetIterator()
-	{
-		iteratorEdges = allEdges;
-	}
+	bool circle(point a, point b, point c, double *x, point *o);
+	void check_circle_event(arc *i, double x0, point Point, point PrevPoint);
 
-	bool getNext(float& x1, float& y1, float& x2, float& y2)
-	{
-		if (iteratorEdges == 0)
-			return false;
+	bool intersect(point p, arc *i, point *result = 0);
+	point intersection(point p0, point p1, double l);
 
-		x1 = iteratorEdges->x1;
-		x2 = iteratorEdges->x2;
-		y1 = iteratorEdges->y1;
-		y2 = iteratorEdges->y2;
+	void finish_edges();
+	void DrawOutput();
 
-		iteratorEdges = iteratorEdges->next;
+	// "Greater than" comparison, for reverse sorting in priority queue.
+	struct gt {
+		bool operator()(point a, point b) { return a.x == b.x ? a.y>b.y : a.x>b.x; }
+		bool operator()(event *a, event *b) { return a->x>b->x; }
+	};
 
-		return true;
-	}
+public: //Make private
+	// Bounding box coordinates.
+	double X0 = 0, X1 = 0, Y0 = 0, Y1 = 0;
+	// First item in the parabolic front linked list.
+	arc *root = 0;
 
-
-private:
-	void cleanup();
-	void cleanupEdges();
-	char *getfree(struct Freelist *fl);
-	struct	Halfedge *PQfind();
-	int PQempty();
-
-
-
-	struct	Halfedge **ELhash;
-	struct	Halfedge *HEcreate(), *ELleft(), *ELright(), *ELleftbnd();
-	struct	Halfedge *HEcreate(struct Edge *e, int pm);
-
-
-	struct Point PQ_min();
-	struct Halfedge *PQextractmin();
-	void freeinit(struct Freelist *fl, int size);
-	void makefree(struct Freenode *curr, struct Freelist *fl);
-	void geominit();
-	void plotinit();
-	bool voronoi(int triangulate);
-	void ref(struct Site *v);
-	void deref(struct Site *v);
-	void endpoint(struct Edge *e, int lr, struct Site * s);
-
-	void ELdelete(struct Halfedge *he);
-	struct Halfedge *ELleftbnd(struct Point *p);
-	struct Halfedge *ELright(struct Halfedge *he);
-	void makevertex(struct Site *v);
-	void out_triple(struct Site *s1, struct Site *s2, struct Site * s3);
-
-	void PQinsert(struct Halfedge *he, struct Site * v, float offset);
-	void PQdelete(struct Halfedge *he);
-	bool ELinitialize();
-	void ELinsert(struct	Halfedge *lb, struct Halfedge *newHe);
-	struct Halfedge * VoronoiDiagramGenerator::ELgethash(int b);
-	struct Halfedge *ELleft(struct Halfedge *he);
-	struct Site *leftreg(struct Halfedge *he);
-	void out_site(struct Site *s);
-	bool PQinitialize();
-	int PQbucket(struct Halfedge *he);
-	void clip_line(struct Edge *e);
-	char *myalloc(unsigned n);
-	int right_of(struct Halfedge *el, struct Point *p);
-
-	struct Site *rightreg(struct Halfedge *he);
-	struct Edge *bisect(struct	Site *s1, struct	Site *s2);
-	float dist(struct Site *s, struct Site *t);
-	struct Site *intersect(struct Halfedge *el1, struct Halfedge *el2, struct Point *p = 0);
-
-	void out_bisector(struct Edge *e);
-	void out_ep(struct Edge *e);
-	void out_vertex(struct Site *v);
-	struct Site *nextone();
-
-	void pushGraphEdge(float x1, float y1, float x2, float y2);
-
-	void VoronoiDiagramGenerator::openpl();
-	void VoronoiDiagramGenerator::line(float x1, float y1, float x2, float y2);
-	void VoronoiDiagramGenerator::circle(float x, float y, float radius);
-	void VoronoiDiagramGenerator::range(float minX, float minY, float maxX, float maxY);
-
-
-	struct  Freelist	hfl;
-	struct	Halfedge *ELleftend, *ELrightend;
-	int 	ELhashsize;
-
-	int		triangulate, sorted, plot, debug;
-	float	xmin, xmax, ymin, ymax, deltax, deltay;
-
-	struct	Site	*sites;
-	int		nsites;
-	int		siteidx;
-	int		sqrt_nsites;
-	int		nvertices;
-	struct 	Freelist sfl;
-	struct	Site	*bottomsite;
-
-	int		nedges;
-	struct	Freelist efl;
-	int		PQhashsize;
-	struct	Halfedge *PQhash;
-	int		PQcount;
-	int		PQmin;
-
-	int		ntry, totalsearch;
-	float	pxmin, pxmax, pymin, pymax, cradius;
-	int		total_alloc;
-
-	float borderMinX, borderMaxX, borderMinY, borderMaxY;
-
-	FreeNodeArrayList* allMemoryList;
-	FreeNodeArrayList* currentMemoryBlock;
-
-	GraphEdge* allEdges;
-	GraphEdge* iteratorEdges;
-
-	float minDistanceBetweenSites;
-
+	priority_queue<point, vector<point>, gt> points;
+	priority_queue<event*, vector<event*>, gt> events;
+	vector<seg*> output;
+	map<point, vector<seg*>> Results;
+	UWorld* World;
 };
 
-int scomp(const void *p1, const void *p2);
+struct seg {
+	point start, end;
+	bool done;
+	point LeftPoint, RightPoint;
+
+	seg(point p, point LPoint, point RPoint, VoronoiGenerator* Generator)
+		: start(p), LeftPoint(LPoint), RightPoint(RPoint), end(0, 0), done(false)
+	{
+		Generator->output.push_back(this);
+	}
+
+	// Set the end point and mark as "done."
+	void finish(point p) { if (done) return; end = p; done = true; }
+};
