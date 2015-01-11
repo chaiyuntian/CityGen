@@ -3,19 +3,28 @@
 #include "DrawDebugHelpers.h"
 #include "ProceduralBuilding.h"
 
-CityGenerator::CityGenerator()
-{
-
-}
-
-void CityGenerator::Generate(int32 BuildingsX = 10, int32 BuildingsY = 10)
+void CityGenerator::Generate(int32 PointsX, int32 PointsY)
 {
 	if (bIsGenerated)
 	{
 		Clean();
 	}
 
+	if (PointsX != this->PointsX || PointsY != this->PointsY)
+	{
+		this->PointsX = PointsX;
+		this->PointsY = PointsY;
+		GenerateReferencedPoints();
+	}
+
+	
+	
 	bIsGenerated = true;
+}
+
+void CityGenerator::GenerateReferencedPoints()
+{
+
 }
 
 void CityGenerator::Clean()

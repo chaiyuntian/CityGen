@@ -347,6 +347,8 @@ FReply CityGenWindow::GenerateCity()
 		VPoint* leftsite = (*i)->left;
 		VPoint* rightsite = (*i)->right;
 
+		if (!start || !end || !leftsite || !rightsite) continue;
+
 		DrawDebugLine(World, FVector(start->x, start->y, 200), FVector(end->x, end->y, 200), FColor(255, 0, 0, 255), false, 100);
 		DrawDebugLine(World, FVector(start->x, start->y, 200), FVector(leftsite->x, leftsite->y, 200), FColor(0, 255, 0, 255), false, 100);
 		DrawDebugLine(World, FVector(start->x, start->y, 200), FVector(rightsite->x, rightsite->y, 200), FColor(0, 0, 255, 255), false, 100);
@@ -434,7 +436,7 @@ FReply CityGenWindow::GenerateCity()
 	{
 		VPoint Core = *(*MapItr).first;
 		FVector CoreLocation = FVector(Core.x , Core.y , 200);
-		vector<VPoint> SortedPoints = MapItr->second;
+		std::vector<VPoint> SortedPoints = MapItr->second;
 		std::sort(SortedPoints.begin(), SortedPoints.end(), LocalComparePointClockwise(Core));
 		TArray<FVector> BottomBuildingPoints;
 		for (auto PointItr = SortedPoints.begin(); PointItr != SortedPoints.end(); PointItr++)
