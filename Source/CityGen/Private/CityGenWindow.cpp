@@ -12,6 +12,7 @@
 #include <map>
 #include <vector.h>
 #include <algorithm>
+#include "CityGenerator.h"
 
 #define LOCTEXT_NAMESPACE "CityGenWindow"
 
@@ -316,8 +317,19 @@ FReply CityGenWindow::GenerateCity()
 {
 	const int32 count = 100;
 	UWorld* World = GetWorld();
-	
-	double w = 1;
+	VoronoiGenerator* Generator = new VoronoiGenerator();
+	Generator->World = World;
+
+	for (int32 i = 0; i < count; i++)
+	{
+		float x = ReferencesPoints[i].X + FMath::RandRange(-NumberPoints, NumberPoints);
+		float y = ReferencesPoints[i].Y + FMath::RandRange(-NumberPoints, NumberPoints);
+		Generator->points.push(point(x, y));
+	}
+	Generator->Generate(FVector2D(0, 0), FVector2D(100000, 100000));
+	Generator->DrawOutput();
+
+	/*double w = 1;
 	int32 MaxPointDist = 1000;
 	vor::Voronoi* Voronoi = new vor::Voronoi();
 	vor::Vertices* Vertices = new vor::Vertices();
@@ -453,7 +465,7 @@ FReply CityGenWindow::GenerateCity()
 		
 		TArray<FProceduralMeshTriangle> Triangles;
 		Building->Generate(BottomBuildingPoints, CoreLocation, Triangles);
-	}
+	}*/
 
 	return FReply::Handled();
 }
